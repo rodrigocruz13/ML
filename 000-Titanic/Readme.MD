@@ -34,10 +34,8 @@ On each run / experiment your code should do the following tasks:
 - Serialize/store the exact input parameters used for the experiment.
 - Serialize/store the resulting metrics from experiment.
 - Serialize/store the trained model plus the exact preprocessing procedure such that inference can be made without the original codebase. [pickle, model.save]
-
-Train -> save model to storage -> load model in sever
-
-Your code should serialize/store the exact code used in the experiment.
+- Train -> save model to storage -> load model in sever
+- Your code should serialize/store the exact code used in the experiment.
 
 At the end of the project create a separate repo with the same code and remove any project specific parts, add comments of where the next user should probably insert important code. Create a README telling users how to easily use the template.
 
@@ -49,9 +47,9 @@ Add nice features to the template such as data splitting, automatic exploration 
 
 ## Tips
 
-Check out tools / services like ML Flow and Weights and Biases.
-Scikit Learn’s custom transformers are a great way to perform complex preprocessing.
-Structure idea
+- Check out tools / services like ML Flow and Weights and Biases.
+- Scikit Learn’s custom transformers are a great way to perform complex preprocessing.
+- Structure idea
 /src # your actual code
    ….
 /results  #<- gitignore
