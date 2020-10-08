@@ -1,5 +1,7 @@
 # Titanic
 
+![Titanic](https://i.imgur.com/3CXi7mb.png)
+
 ## ML Starter Repo
 
 ### Motivation
