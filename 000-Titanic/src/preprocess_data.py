@@ -30,7 +30,7 @@ def clean_screen():
     _ = system('cls') if name == 'nt' else system('clear')
 
 
-def read_name():
+def files_tree():
     """
     [Function that reads (as input) the name(string) of the dataset]
 
@@ -41,35 +41,80 @@ def read_name():
         The first location of the file or None otherwise
     """
 
-    import glob
-    import typer
-    from subprocess import check_output
+    import os
+    import yaml
 
-    print("Files in current folder")
-    print(check_output(["ls", "../Titanic"]).decode("utf8"))
+    longpath = os.path.join(os.getcwd(), os.listdir(os.getcwd())[0])
+    folder = os.path.dirname(os.path.dirname(longpath)).split("/", -1)[-1]
+    path = longpath.split(folder)[0] + folder
 
+    tree = {}
+    print("\nFiles in current project")
+    for dirName, subdirList, fileList in os.walk(os.pardir):
+
+        parent = dirName.split("..")[1]
+        print("{}".format(parent))
+        file_lst = []
+        for fname in fileList:
+            print('\t - %s' % fname)
+            file_lst.append(fname)
+
+        # update dictionary
+        if ('__pycache__' not in parent.split('/')):
+            tree[path + parent + '/'] = file_lst
+
+    # save to a file
+    path = '../results/file_structure.yaml'
+    with open(path, "w") as fs:
+        yaml.dump(tree, fs, explicit_start=True, default_flow_style=False)
+
+    return tree
+
+
+def read_args(tree):
+    """
+    [Function that reads the args from command line]
+
+    Args:
+        tree  ([dict]): [file tree structure of this current project]
+
+    Returns:
+        The first location of the file or None otherwise
+    """
+
+    import os
+
+    print()
     print("Type 'x' to exit")
     files = []
     while (len(files) == 0):
-        full_name = input("Name of the Dataset - zip file: ")
+        args = input("Usage: Dataset(zip file) -d -m : ")
+        print()
+        args = args.split(" ")
+        files.append(args)
+
         # debugging = input("- Debugging mode [y/n]?: ")
         # modeltype = input("Type the name of the Dataset - zip file: ")
-
         # data_path: Input data should not be a constant since the repo should
         # be general.
 
-        if (full_name == 'x' or full_name == 'X'):
+        if (args[0] == 'x' or args[0] == 'X'):
             return None
-        zip_name = full_name.casefold().split(".")[0] + ".zip"
 
-        files = glob.glob("." + '/**/' + zip_name, recursive=True)
-        print()
-        if (len(files) != 0):
-            print("0. File found at: ", files[0])
-            return files[0]
+        doc = args[0].casefold().split(".")[0] + ".zip"
+
+        path = ''
+        for key, value in tree.items():
+            if doc in value:
+                path = key + doc
+
+        if (path != ''):
+            print("0. File found at: ", path)
+            return path
 
         else:
             print("File not found")
+            return None
 
 
 def is_csv(a_str):
@@ -83,7 +128,7 @@ def is_csv(a_str):
     return ((a_str.split(".")[1] == 'csv') or (a_str.split(".")[1] == 'CSV'))
 
 
-def extract_fromzip(a_zipfile):
+def open_zip(a_zipfile):
     import sys
 
     """
@@ -105,8 +150,9 @@ def extract_fromzip(a_zipfile):
         print("Empty file")
         sys.exit(0)
 
+    doc = a_zipfile.split("/")[-1]
     print()
-    print("1. Decompressing: {:>24}".format(a_zipfile.split("/")[1]), end="")
+    print("1. Decompressing: {:>24}".format(doc), end="")
     print("\b\tSize = {} MB".format(size_MB))
     print()
     try:
@@ -120,36 +166,24 @@ def extract_fromzip(a_zipfile):
                 print("\tNo CSV files in {}".format(a_zipfile))
                 return None
 
+            new_path = a_zipfile.split(doc)[0]
+            print("\t",new_path)
             # Iterate over each file and extract it
+            paths = []
             for i, fileName in enumerate(listOfFileNames):
-                zipObj.extract(fileName, '.')
-                size_MB = os.path.getsize(fileName) / 1000000
+                zipObj.extract(fileName, new_path)
+                size_MB = os.path.getsize(new_path + fileName) / 1000000
 
                 print("\tExtracting:  {:>21}".format(fileName), end="")
                 print("\b\tSize = {} MB".format(size_MB))
-
+                paths.append(new_path + fileName)
             print("\n\tTotal CSV files extracted: {}".format(i + 1))
             print()
-            return zipObj.namelist()
+            return paths
 
     except BaseException as e:
         print(e)
         return None
-
-
-def save_csv_list(lst, filename):
-    """[save list in a csv_files.yaml file]
-
-    Args:
-        lst         ([lst]):    [list of filenames]
-        filename    ([str]):    [Name of the file]
-    """
-    import yaml
-
-    # save to a file
-    print("2. Serializing file list\n")
-    with open(filename + '.yaml', "w") as fh:
-        yaml.dump_all(lst, fh, explicit_start=True, default_flow_style=False)
 
 
 def recover_name(a_str, a_lst):
@@ -165,7 +199,7 @@ def recover_name(a_str, a_lst):
     return matching[0]
 
 
-def read_csv(a_str):
+def read_csv(csv_file_path):
     """
     [Function that read a csv file can convert the data into a panda Df]
 
@@ -177,36 +211,52 @@ def read_csv(a_str):
     """
 
     import pandas as pd
-    import glob
 
-    csv_file = a_str + ".csv"
-    files = glob.glob("." + '/**/' + csv_file, recursive=True)
-
-    size_MB = os.path.getsize(csv_file) / 1000000
-    print("\tOpening {} as Pandas DF".format(csv_file), end="\t")
+    size_MB = os.path.getsize(csv_file_path) / 1000000
+    print("2. Opening {} as Pandas DF".format(csv_file_path), end="\t")
     print("\b Size = {} MB".format(size_MB))
-    df = pd.read_csv("./" + csv_file, error_bad_lines=False)
+    df = pd.read_csv(csv_file_path, error_bad_lines=False)
 
     return df
 
 
-def preprocess(full_df, NAME):
+def preprocess(dss, names):
     """
     [Function that preprocess data from a Pandas Df]
 
     Args:
-        full_df ([Pandas df]):  [Dataframe with the trading info of BTC]
-        NAME     ([str]):       [Name of the dataframe]
+        dss ([Pandas df]):  [Dataframe with the trading info of BTC]
+        names     ([str]):       [Name of the dataframe]
 
     Returns:
         main_df ([Pandas df]):  [A sliced preprocessed version of the DF]
     """
-    """
-    print("6. Preprocessing data of {}".format(NAME))
 
-    # a. Converting Timestamps
-    print("6.a. Converting Timestamps from UNIX to UTC")
-    full_df['Timestamp'] = pd.to_datetime(full_df['Timestamp'], unit='s')
+    i = 0
+    for ds in dss:
+
+        print()
+        print("3. Preprocessing data of", format(names[i]))
+
+        print("\t3.1 Completing missing age with median")
+        ds['Age'].fillna(ds['Age'].median(), inplace = True)
+
+        print("\t3.2 Completing embarked with mode")
+        ds['Embarked'].fillna(ds['Embarked'].mode()[0], inplace = True)
+
+        print("\t3.3 Completing missing fare with median")
+        ds['Fare'].fillna(ds['Fare'].median(), inplace = True)
+        i = i + 1
+    #delete the cabin feature/column and others previously stated to exclude in train ds
+    drop_column = ['PassengerId','Cabin', 'Ticket']
+    dss[0].drop(drop_column, axis=1, inplace = True)
+
+    # print(dss[0].isnull().sum())
+    # print("-"*10)
+    # print(dss[1].isnull().sum())
+
+    return None
+    """
 
     # b. Filling the GAPs
     print("6.b. Filling the gaps. Interpolating NAN with last known value")
@@ -268,15 +318,14 @@ def preprocess(full_df, NAME):
     sliced_df.dropna(inplace=True)
 
     # Restoring the values of Timestamps
-    """
-    """
+
     dates = pd.to_datetime(['2019-01-15 13:30:00'])
     (dates - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
     # Int64Index([1547559000], dtype='int64')
-    """
-    """
+
     t = pd.Timestamp("1970-01-01")
     sliced_df['Timestamp'] = (sliced_df['Timestamp'] - t) / pd.Timedelta('1s')
+
 
     return sliced_df
     """

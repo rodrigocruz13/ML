@@ -5,19 +5,19 @@ import sys
 # import pandas as pd
 
 clean_sc = __import__('preprocess_data').clean_screen
-read_arg = __import__('preprocess_data').read_name
-open_zip = __import__('preprocess_data').extract_fromzip
-save_lst = __import__('preprocess_data').save_csv_list
+maketree = __import__('preprocess_data').files_tree
+read_arg = __import__('preprocess_data').read_args
+open_zip = __import__('preprocess_data').open_zip
 rec_name = __import__('preprocess_data').recover_name
 
 read_csv = __import__('preprocess_data').read_csv
 plotting = __import__('preprocess_data').plotting_df
 preproc_ = __import__('preprocess_data').preprocess
 
-data_seq = __import__('forecast_btc').data_seq
-balances = __import__('forecast_btc').verify_data_balance
-RNN_make = __import__('forecast_btc').build_RNN
-train_md = __import__('forecast_btc').train_model
+#data_seq = __import__('forecast_btc').data_seq
+#balances = __import__('forecast_btc').verify_data_balance
+#RNN_make = __import__('forecast_btc').build_RNN
+#train_md = __import__('forecast_btc').train_model
 
 # pd.set_option('mode.chained_assignment', None)  # Avoid warnings
 
@@ -25,38 +25,28 @@ train_md = __import__('forecast_btc').train_model
 # 0. Clean screen
 clean_sc()
 
-# 1. Read the arguments for traininig
-FILE_PATH = read_arg()
-if (FILE_PATH == None):
+# 1. Generate file structure
+tree = maketree()
+
+# 2. Read the arguments for traininig
+args = read_arg(tree)
+if (args == None):
     sys.exit(0)
 
-# 2. Decompress ZIP file
-CSV_LST = open_zip(FILE_PATH)
-if (CSV_LST == None):
+# 3. Decompress ZIP file
+paths = open_zip(args)
+if (len(paths) == 0 or paths == None):
     sys.exit(0)
 
-# 3. Serializing list of decompressed files
-save_lst(CSV_LST, 'csv_files')
+train_file, tests_file = rec_name("train", paths), rec_name("test", paths)
+train_df, val_df = read_csv(train_file), read_csv(tests_file)
 
-# 4. Recover the names of the CSV_files
-print("3. Recovering files")
-train_file = rec_name("train", CSV_LST)
-test__file = rec_name("test", CSV_LST)
-
-# 5. Read train CSV_file
-train_df = read_csv("train")
+dfs, names  = [train_df, val_df], ["train", "validation"]
+# 4. Preprocessing DFs: Correcting, Completing, Creating, and Converting
+preprocessed_dfs = preproc_(dfs, names)
+print()
 
 """
-# 5. Plotting
-plotting(df)
-print()
-
-# 6. Preprocessing the selected Dataframe (Slicing data)
-main_df = preproc_(df, "Main DF")
-print()
-vali_df = preproc_(validation_df, "Validation DF")
-print()
-
 print("Bitcoin (฿) forecasting")
 print("Part 2. Predicting values")
 print("---------------------")
